@@ -8,12 +8,11 @@ import struct
 import math
 import win32gui
 
-# --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
 known_targets = {}
 targets_on_screen = []
 is_running = True
 
-# --- ОФФСЕТЫ ---
+# --- ОФФСЕТЫ --- Не трогай далпаеп
 PROCESS_NAME = "FPVKamikazeDrone-Win64-Shipping.exe"
 GAME_WINDOW_CLASS = "UnrealWindow"
 GWORLD = 0x9815218
@@ -32,7 +31,7 @@ PLAYER_STATE_IN_PAWN_OFFSET = 0x02C8
 IS_BOT_FLAG_OFFSET = 0x02B2
 PLAYER_NAME_OFFSET = 0x0340
 
-# --- Функция для чтения FString ---
+# --- тут типо никнейм беру ---
 def read_fstring(pm, address):
     try:
         ptr = pm.read_longlong(address)
@@ -44,7 +43,7 @@ def read_fstring(pm, address):
     except:
         return ""
 
-# --- Функция WorldToScreen (без изменений) ---
+# --- 3d в 2d и на экран точкой ---
 def world_to_screen(world_location, cam_loc, cam_rot, fov, screen_width, screen_height):
     try:
         v_delta = (world_location[0] - cam_loc[0], world_location[1] - cam_loc[1], world_location[2] - cam_loc[2])
@@ -62,7 +61,7 @@ def world_to_screen(world_location, cam_loc, cam_rot, fov, screen_width, screen_
     except (ValueError, ZeroDivisionError, OverflowError):
         return None
 
-# --- ИЗМЕНЕННЫЙ ПОТОК-СКАНЕР С ЖЕСТКИМ ФИЛЬТРОМ ---
+# --- Что это тебя ебать не должно ---
 def player_scanner_thread():
     global known_targets, is_running
     try:
@@ -86,7 +85,7 @@ def player_scanner_thread():
                     player_state_ptr = pm.read_longlong(actor_ptr + PLAYER_STATE_IN_PAWN_OFFSET)
                     if not player_state_ptr: continue
                     
-                    # --- ЖЕСТКИЙ ФИЛЬТР ---
+                    # --- Жесткая подлива чтоб отсеить мусор ---
                     player_name = read_fstring(pm, player_state_ptr + PLAYER_NAME_OFFSET)
                     if player_name: # Проверяем, что имя НЕ пустое
                         # Определяем, бот ли это
@@ -110,7 +109,7 @@ def player_scanner_thread():
         time.sleep(2)
     print("Поток сканера завершен.")
 
-# --- ОСНОВНОЙ ПОТОК (ОТРИСОВЩИК) (без изменений) ---
+# --- Я хз как назвать, основной поток крч ---
 def cheat_thread():
     global targets_on_screen, is_running, known_targets
     try:
@@ -168,7 +167,7 @@ def cheat_thread():
         time.sleep(0.001)
     print("Основной поток чита завершен.")
 
-# --- GUI ДЛЯ ОТРИСОВКИ (без изменений) ---
+# --- Рисуем точки и другую шляпу ---
 def create_gui():
     global is_running
     root = tk.Tk()
@@ -209,7 +208,7 @@ def create_gui():
     root.after(16, update_canvas)
     root.mainloop()
 
-# --- ЗАПУСК ПРОГРАММЫ (без изменений) ---
+# --- СТАРТУЕЕЕМ ---
 if __name__ == "__main__":
     print("Запуск потоков...")
     scanner = threading.Thread(target=player_scanner_thread, daemon=True)
