@@ -8,11 +8,12 @@ import struct
 import math
 import win32gui
 
+# --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
 known_targets = {}
 targets_on_screen = []
 is_running = True
 
-# --- ОФФСЕТЫ --- Не трогай далпаеп
+# --- ОФФСЕТЫ ---
 PROCESS_NAME = "FPVKamikazeDrone-Win64-Shipping.exe"
 GAME_WINDOW_CLASS = "UnrealWindow"
 GWORLD = 0x9815218
@@ -31,7 +32,7 @@ PLAYER_STATE_IN_PAWN_OFFSET = 0x02C8
 IS_BOT_FLAG_OFFSET = 0x02B2
 PLAYER_NAME_OFFSET = 0x0340
 
-# --- тут типо никнейм беру ---
+# --- Нинеймы читаем типа FString ---
 def read_fstring(pm, address):
     try:
         ptr = pm.read_longlong(address)
@@ -43,7 +44,7 @@ def read_fstring(pm, address):
     except:
         return ""
 
-# --- 3d в 2d и на экран точкой ---
+# --- Функция WorldToScreen ---
 def world_to_screen(world_location, cam_loc, cam_rot, fov, screen_width, screen_height):
     try:
         v_delta = (world_location[0] - cam_loc[0], world_location[1] - cam_loc[1], world_location[2] - cam_loc[2])
@@ -61,7 +62,7 @@ def world_to_screen(world_location, cam_loc, cam_rot, fov, screen_width, screen_
     except (ValueError, ZeroDivisionError, OverflowError):
         return None
 
-# --- Что это тебя ебать не должно ---
+# --- Сканер далпаепаф ---
 def player_scanner_thread():
     global known_targets, is_running
     try:
@@ -85,10 +86,10 @@ def player_scanner_thread():
                     player_state_ptr = pm.read_longlong(actor_ptr + PLAYER_STATE_IN_PAWN_OFFSET)
                     if not player_state_ptr: continue
                     
-                    # --- Жесткая подлива чтоб отсеить мусор ---
+                    # --- далпаеп или не талпаеп тут узнают ---
                     player_name = read_fstring(pm, player_state_ptr + PLAYER_NAME_OFFSET)
                     if player_name: # Проверяем, что имя НЕ пустое
-                        # Определяем, бот ли это
+                        # а ти ботик? или нед?
                         flags_byte = pm.read_uchar(player_state_ptr + IS_BOT_FLAG_OFFSET)
                         is_bot = (flags_byte & (1 << 3)) != 0
                         display_name = "Bot" if is_bot else player_name
@@ -99,7 +100,7 @@ def player_scanner_thread():
                 except pymem.exception.MemoryReadError:
                     continue
             
-            # Очистка старых данных (тех, кого больше нет в игре)
+            # удаляет дуракоф (тех, кого больше нет в игре)
             stale_actors = set(known_targets.keys()) - current_live_actors
             for actor in stale_actors:
                 known_targets.pop(actor, None)
@@ -109,7 +110,7 @@ def player_scanner_thread():
         time.sleep(2)
     print("Поток сканера завершен.")
 
-# --- Я хз как назвать, основной поток крч ---
+# --- рисуем сиськи письки на экране ---
 def cheat_thread():
     global targets_on_screen, is_running, known_targets
     try:
@@ -167,7 +168,7 @@ def cheat_thread():
         time.sleep(0.001)
     print("Основной поток чита завершен.")
 
-# --- Рисуем точки и другую шляпу ---
+# --- HUI для отрисовки ---
 def create_gui():
     global is_running
     root = tk.Tk()
@@ -208,7 +209,7 @@ def create_gui():
     root.after(16, update_canvas)
     root.mainloop()
 
-# --- СТАРТУЕЕЕМ ---
+# --- Це запуск ---
 if __name__ == "__main__":
     print("Запуск потоков...")
     scanner = threading.Thread(target=player_scanner_thread, daemon=True)
