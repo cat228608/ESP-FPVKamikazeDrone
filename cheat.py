@@ -16,9 +16,9 @@ is_running = True
 # --- ОФФСЕТЫ ---
 PROCESS_NAME = "FPVKamikazeDrone-Win64-Shipping.exe"
 GAME_WINDOW_CLASS = "UnrealWindow"
-GWORLD = 0x9815218
+GWORLD = 0x9817498
 PERSISTENT_LEVEL = 0x0030
-ACTORS_ARRAY = 0x00A0
+ACTORS_ARRAY = 0xA0
 ROOT_COMPONENT = 0x01B8
 RELATIVE_LOCATION = 0x0128
 OWNING_GAME_INSTANCE = 0x1D8
@@ -32,7 +32,6 @@ PLAYER_STATE_IN_PAWN_OFFSET = 0x02C8
 IS_BOT_FLAG_OFFSET = 0x02B2
 PLAYER_NAME_OFFSET = 0x0340
 
-# --- Нинеймы читаем типа FString ---
 def read_fstring(pm, address):
     try:
         ptr = pm.read_longlong(address)
@@ -44,7 +43,6 @@ def read_fstring(pm, address):
     except:
         return ""
 
-# --- Функция WorldToScreen ---
 def world_to_screen(world_location, cam_loc, cam_rot, fov, screen_width, screen_height):
     try:
         v_delta = (world_location[0] - cam_loc[0], world_location[1] - cam_loc[1], world_location[2] - cam_loc[2])
@@ -62,7 +60,6 @@ def world_to_screen(world_location, cam_loc, cam_rot, fov, screen_width, screen_
     except (ValueError, ZeroDivisionError, OverflowError):
         return None
 
-# --- Сканер далпаепаф ---
 def player_scanner_thread():
     global known_targets, is_running
     try:
@@ -86,10 +83,8 @@ def player_scanner_thread():
                     player_state_ptr = pm.read_longlong(actor_ptr + PLAYER_STATE_IN_PAWN_OFFSET)
                     if not player_state_ptr: continue
                     
-                    # --- далпаеп или не талпаеп тут узнают ---
                     player_name = read_fstring(pm, player_state_ptr + PLAYER_NAME_OFFSET)
-                    if player_name: # Проверяем, что имя НЕ пустое
-                        # а ти ботик? или нед?
+                    if player_name:
                         flags_byte = pm.read_uchar(player_state_ptr + IS_BOT_FLAG_OFFSET)
                         is_bot = (flags_byte & (1 << 3)) != 0
                         display_name = "Bot" if is_bot else player_name
@@ -100,7 +95,7 @@ def player_scanner_thread():
                 except pymem.exception.MemoryReadError:
                     continue
             
-            # удаляет дуракоф (тех, кого больше нет в игре)
+            # Очистка старых данных (тех, кого больше нет в игре)
             stale_actors = set(known_targets.keys()) - current_live_actors
             for actor in stale_actors:
                 known_targets.pop(actor, None)
@@ -110,7 +105,6 @@ def player_scanner_thread():
         time.sleep(2)
     print("Поток сканера завершен.")
 
-# --- рисуем сиськи письки на экране ---
 def cheat_thread():
     global targets_on_screen, is_running, known_targets
     try:
@@ -168,7 +162,6 @@ def cheat_thread():
         time.sleep(0.001)
     print("Основной поток чита завершен.")
 
-# --- HUI для отрисовки ---
 def create_gui():
     global is_running
     root = tk.Tk()
@@ -209,7 +202,6 @@ def create_gui():
     root.after(16, update_canvas)
     root.mainloop()
 
-# --- Це запуск ---
 if __name__ == "__main__":
     print("Запуск потоков...")
     scanner = threading.Thread(target=player_scanner_thread, daemon=True)
