@@ -5,6 +5,7 @@ import os
 import threading
 import tkinter as tk
 import struct
+import re
 import math
 import win32gui
 
@@ -32,17 +33,22 @@ PLAYER_STATE_IN_PAWN_OFFSET = 0x02C8
 IS_BOT_FLAG_OFFSET = 0x02B2
 PLAYER_NAME_OFFSET = 0x0340
 
+
 def read_fstring(pm, address):
     try:
         ptr = pm.read_longlong(address)
-        if not ptr: return ""
+        if not ptr:
+            return ""
         length = pm.read_int(address + 8)
-        if not (0 < length < 128): return ""
-        buffer = pm.read_bytes(ptr, length * 2)
-        return buffer.decode('utf-16', errors='ignore').strip('\x00')
+        if not (0 < length < 128):
+            return ""
+        raw = pm.read_bytes(ptr, length * 2)
+        decoded = raw.decode('utf-16', errors='ignore').strip('\x00')
+        return ''.join(c for c in decoded if 32 <= ord(c) <= 126)
     except:
         return ""
 
+# --- Функция WorldToScreen (без изменений) ---
 def world_to_screen(world_location, cam_loc, cam_rot, fov, screen_width, screen_height):
     try:
         v_delta = (world_location[0] - cam_loc[0], world_location[1] - cam_loc[1], world_location[2] - cam_loc[2])
@@ -60,6 +66,7 @@ def world_to_screen(world_location, cam_loc, cam_rot, fov, screen_width, screen_
     except (ValueError, ZeroDivisionError, OverflowError):
         return None
 
+# --- ИЗМЕНЕННЫЙ ПОТОК-СКАНЕР С ЖЕСТКИМ ФИЛЬТРОМ ---
 def player_scanner_thread():
     global known_targets, is_running
     try:
@@ -68,43 +75,54 @@ def player_scanner_thread():
     except pymem.exception.ProcessNotFound: is_running = False; return
 
     while is_running:
-        current_live_actors = set()
+        player_state_to_name = {} # {ps_ptr: "nickname"}
+        pawn_to_display = {}      # {pawn_ptr: "display_name"}
+        
         try:
             world_ptr = pm.read_longlong(base_address + GWORLD)
             level_ptr = pm.read_longlong(world_ptr + PERSISTENT_LEVEL)
             actors_array_ptr = pm.read_longlong(level_ptr + ACTORS_ARRAY)
             actor_count = pm.read_int(level_ptr + ACTORS_ARRAY + 0x8)
 
+            # --- Шаг 1: Собираем "паспортный стол" всех игроков ---
             for i in range(actor_count):
                 try:
                     actor_ptr = pm.read_longlong(actors_array_ptr + i * 0x8)
                     if not actor_ptr: continue
                     
-                    player_state_ptr = pm.read_longlong(actor_ptr + PLAYER_STATE_IN_PAWN_OFFSET)
-                    if not player_state_ptr: continue
-                    
-                    player_name = read_fstring(pm, player_state_ptr + PLAYER_NAME_OFFSET)
-                    if player_name:
-                        flags_byte = pm.read_uchar(player_state_ptr + IS_BOT_FLAG_OFFSET)
-                        is_bot = (flags_byte & (1 << 3)) != 0
-                        display_name = "Bot" if is_bot else player_name
+                    ps_ptr = pm.read_longlong(actor_ptr + PLAYER_STATE_IN_PAWN_OFFSET)
+                    if ps_ptr and ps_ptr not in player_state_to_name:
+                        player_name = read_fstring(pm, ps_ptr + PLAYER_NAME_OFFSET)
+                        if player_name:
+                            flags_byte = pm.read_uchar(ps_ptr + IS_BOT_FLAG_OFFSET)
+                            is_bot = (flags_byte & (1 << 3)) != 0
+                            display_name = "Bot" if is_bot else player_name
+                            player_state_to_name[ps_ptr] = display_name
+                except pymem.exception.MemoryReadError:
+                    continue
 
-                        known_targets[actor_ptr] = (time.time(), display_name)
-                        current_live_actors.add(actor_ptr)
+            # --- Шаг 2: Ищем "тела" (Pawn), которые принадлежат этим игрокам ---
+            for i in range(actor_count):
+                try:
+                    actor_ptr = pm.read_longlong(actors_array_ptr + i * 0x8)
+                    if not actor_ptr: continue
 
+                    ps_ptr = pm.read_longlong(actor_ptr + PLAYER_STATE_IN_PAWN_OFFSET)
+                    if ps_ptr in player_state_to_name:
+                        # Нашли Pawn, который принадлежит известному нам игроку
+                        pawn_to_display[actor_ptr] = player_state_to_name[ps_ptr]
                 except pymem.exception.MemoryReadError:
                     continue
             
-            # Очистка старых данных (тех, кого больше нет в игре)
-            stale_actors = set(known_targets.keys()) - current_live_actors
-            for actor in stale_actors:
-                known_targets.pop(actor, None)
+            known_targets = pawn_to_display
 
         except (pymem.exception.MemoryReadError, TypeError):
             pass
-        time.sleep(2)
+        time.sleep(1)
     print("Поток сканера завершен.")
 
+
+# --- ОСНОВНОЙ ПОТОК (ОТРИСОВЩИК) (без изменений) ---
 def cheat_thread():
     global targets_on_screen, is_running, known_targets
     try:
@@ -139,7 +157,7 @@ def cheat_thread():
             
             current_targets_to_process = dict(known_targets)
             
-            for actor_ptr, (last_seen, name) in current_targets_to_process.items():
+            for actor_ptr, name in current_targets_to_process.items():
                 if actor_ptr == player_pawn_ptr: continue
 
                 try:
@@ -162,6 +180,7 @@ def cheat_thread():
         time.sleep(0.001)
     print("Основной поток чита завершен.")
 
+# --- GUI ДЛЯ ОТРИСОВКИ (без изменений) ---
 def create_gui():
     global is_running
     root = tk.Tk()
@@ -202,6 +221,7 @@ def create_gui():
     root.after(16, update_canvas)
     root.mainloop()
 
+# --- ЗАПУСК ПРОГРАММЫ (без изменений) ---
 if __name__ == "__main__":
     print("Запуск потоков...")
     scanner = threading.Thread(target=player_scanner_thread, daemon=True)
