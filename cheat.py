@@ -17,7 +17,7 @@ is_running = True
 # --- ОФФСЕТЫ ---
 PROCESS_NAME = "FPVKamikazeDrone-Win64-Shipping.exe"
 GAME_WINDOW_CLASS = "UnrealWindow"
-GWORLD = 0x9817498
+GWORLD = 0x980B428
 PERSISTENT_LEVEL = 0x0030
 ACTORS_ARRAY = 0xA0
 ROOT_COMPONENT = 0x01B8
@@ -236,3 +236,4 @@ if __name__ == "__main__":
         create_gui()
     
     print("Программа завершена.")
+
