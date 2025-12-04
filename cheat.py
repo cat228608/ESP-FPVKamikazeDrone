@@ -1,3 +1,4 @@
+
 import pymem
 import pymem.process
 import time
@@ -17,17 +18,17 @@ is_running = True
 # --- ОФФСЕТЫ ---
 PROCESS_NAME = "FPVKamikazeDrone-Win64-Shipping.exe"
 GAME_WINDOW_CLASS = "UnrealWindow"
-GWORLD = 0x980B428
+GWORLD = 0x9DC11A0
 PERSISTENT_LEVEL = 0x0030
 ACTORS_ARRAY = 0xA0
 ROOT_COMPONENT = 0x01B8
-RELATIVE_LOCATION = 0x0128
-OWNING_GAME_INSTANCE = 0x1D8
-LOCAL_PLAYERS = 0x38
+RELATIVE_LOCATION = 0x140 #0x0128 старый
+OWNING_GAME_INSTANCE = 0x0228 #0x1D8 старый
+LOCAL_PLAYERS = 0x38 #C0 возможно новый
 PLAYER_CONTROLLER = 0x30
 ACKNOWLEDGED_PAWN = 0x350
 PLAYER_CAMERA_MANAGER_OFFSET = 0x0360
-CAMERA_CACHE_OFFSET = 0x1410
+CAMERA_CACHE_OFFSET = 0x1530 #0x1410 старый
 POV_OFFSET = 0x0010
 PLAYER_STATE_IN_PAWN_OFFSET = 0x02C8 
 IS_BOT_FLAG_OFFSET = 0x02B2
@@ -236,4 +237,3 @@ if __name__ == "__main__":
         create_gui()
     
     print("Программа завершена.")
-
